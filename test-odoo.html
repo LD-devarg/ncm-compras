@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Conexión Odoo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .card { background: white; border-radius: 1rem; box-shadow: 0 4px 24px rgba(0,0,0,.08); padding: 2rem; width: 100%; max-width: 560px; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #1e293b; margin-bottom: .25rem; }
+    p.sub { font-size: .8rem; color: #94a3b8; margin-bottom: 1.5rem; }
+    label { display: block; font-size: .75rem; font-weight: 600; color: #64748b; margin-bottom: .3rem; }
+    input { width: 100%; border: 1px solid #e2e8f0; border-radius: .5rem; padding: .6rem .85rem; font-size: .95rem; color: #1e293b; outline: none; margin-bottom: 1rem; }
+    input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+    button { width: 100%; background: #6366f1; color: white; border: none; border-radius: .5rem; padding: .75rem; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background .2s; }
+    button:hover { background: #4f46e5; }
+    button:disabled { background: #a5b4fc; cursor: not-allowed; }
+    .result { margin-top: 1.5rem; display: none; }
+    .step { display: flex; align-items: flex-start; gap: .75rem; padding: .75rem; border-radius: .6rem; margin-bottom: .5rem; }
+    .step.ok  { background: #f0fdf4; }
+    .step.err { background: #fef2f2; }
+    .step.skip{ background: #f8fafc; }
+    .icon { font-size: 1.1rem; flex-shrink: 0; margin-top: .05rem; }
+    .step-title { font-size: .8rem; font-weight: 700; color: #1e293b; }
+    .step-detail { font-size: .78rem; color: #64748b; margin-top: .15rem; }
+    .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: .4rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Test Conexión Odoo</h1>
+  <p class="sub">Hace el deploy de GAS primero (clasp push + nueva versión) para que los cambios estén activos.</p>
+
+  <label>URL del Web App (GAS)</label>
+  <input id="gasUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
+
+  <button id="btn" onclick="testear()">Probar conexión</button>
+
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+  // Intentar pre-cargar la URL del .env si corrés esto desde el mismo origen
+  const GAS_URL_ENV = '';  // podés pegarlo acá manualmente si querés
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (GAS_URL_ENV) document.getElementById('gasUrl').value = GAS_URL_ENV;
+  });
+
+  async function testear() {
+    const url = document.getElementById('gasUrl').value.trim();
+    if (!url) { alert('Ingresá la URL del Web App de GAS'); return; }
+
+    const btn = document.getElementById('btn');
+    const result = document.getElementById('result');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Probando...';
+    result.style.display = 'none';
+    result.innerHTML = '';
+
+    try {
+      const resp = await fetch(`${url}?action=testOdoo`, { redirect: 'follow' });
+      const data = await resp.json();
+      result.style.display = 'block';
+      result.innerHTML = renderResultado(data);
+    } catch (e) {
+      result.style.display = 'block';
+      result.innerHTML = `<div class="step err"><span class="icon">❌</span><div><div class="step-title">Error de red</div><div class="step-detail">${e.message}</div></div></div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Probar conexión';
+    }
+  }
+
+  function renderResultado(data) {
+    if (data.error) {
+      return `<div class="step err"><span class="icon">❌</span><div><div class="step-title">Error del servidor</div><div class="step-detail">${data.error}</div></div></div>`;
+    }
+
+    const pasos = [
+      { key: 'configuracion', label: 'Configuración' },
+      { key: 'autenticacion', label: 'Autenticación' },
+      { key: 'lectura',       label: 'Lectura de datos' }
+    ];
+
+    return pasos.map(p => {
+      const paso = data[p.key];
+      if (!paso) return '';
+      const cls  = paso.ok ? 'ok' : 'err';
+      const icon = paso.ok ? '✅' : '❌';
+      return `
+        <div class="step ${cls}">
+          <span class="icon">${icon}</span>
+          <div>
+            <div class="step-title">${p.label}</div>
+            <div class="step-detail">${paso.detalle || ''}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+</script>
+</body>
+</html>
