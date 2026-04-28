@@ -47,7 +47,7 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
     const limpio = val.replace(/\D/g, '').slice(0, 11)
     setCuit(limpio)
     setResultado(null)
-    if (limpio.length === 11) {
+    if (limpio.length >= 6) {
       const match = proveedores.find(p => String(p.cuit).replace(/\D/g, '') === limpio)
       setProvMatch(match ? { id: match.id, nombre: match.nombre } : 'nuevo')
     } else {
@@ -235,7 +235,7 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
               </div>
 
               {/* Feedback CUIT */}
-              {cuit.length === 11 && provMatch === 'nuevo' && (
+              {cuit.length >= 6 && provMatch === 'nuevo' && (
                 <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2.5">
                   <svg className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -246,7 +246,7 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
                   </div>
                 </div>
               )}
-              {cuit.length === 11 && provMatch && provMatch !== 'nuevo' && (
+              {cuit.length >= 6 && provMatch && provMatch !== 'nuevo' && (
                 <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
                   <svg className="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -257,8 +257,8 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
                   </div>
                 </div>
               )}
-              {cuit.length > 0 && cuit.length < 11 && (
-                <p className="text-xs text-gray-400">{11 - cuit.length} dígito{11 - cuit.length !== 1 ? 's' : ''} restante{11 - cuit.length !== 1 ? 's' : ''}</p>
+              {cuit.length > 0 && cuit.length < 6 && (
+                <p className="text-xs text-gray-400">{6 - cuit.length} dígito{6 - cuit.length !== 1 ? 's' : ''} mínimo{6 - cuit.length !== 1 ? 's' : ''} restante{6 - cuit.length !== 1 ? 's' : ''}</p>
               )}
 
               {/* Resultado */}
@@ -277,7 +277,7 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
               <div className="flex gap-2">
                 <button
                   onClick={handleCrearOC}
-                  disabled={cuit.length !== 11 || creando || rechazando || !!resultado?.ok}
+                  disabled={cuit.length < 6 || creando || rechazando || !!resultado?.ok}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors flex items-center justify-center gap-2"
                 >
                   {creando && (
