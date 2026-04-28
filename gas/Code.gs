@@ -10,6 +10,28 @@ const ODOO_DB   = 'ncmservicios-main-17277747'; // nombre de la base de datos de
 const ODOO_USER = 'ignaciodiel.ncm@outlook.com'; // email del usuario Odoo
 
 // ─────────────────────────────────────────────
+// Menú personalizado en Google Sheets
+// ─────────────────────────────────────────────
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('NCM Compras')
+    .addItem('🔄 Sincronizar proveedores Odoo', 'sincronizarProveedoresOdoo')
+    .addItem('🧪 Testear conexión Odoo', 'testConexionOdooUI')
+    .addToUi();
+}
+
+function testConexionOdooUI() {
+  const resultado = testConexionOdoo();
+  const ok = resultado.autenticacion && resultado.autenticacion.ok;
+  SpreadsheetApp.getUi().alert(
+    ok ? '✅ Conexión OK' : '❌ Error de conexión',
+    JSON.stringify(resultado, null, 2),
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+// ─────────────────────────────────────────────
 // Endpoints
 // ─────────────────────────────────────────────
 
@@ -42,6 +64,11 @@ function doGet(e) {
       const cuit          = e.parameter.cuit;
       const itemsOverride = e.parameter.itemsOverride || null;
       return jsonResponse(crearOCDesdeSheet({ solicitudId, cuit, itemsOverride }));
+    }
+
+    if (action === 'sincronizarProveedores') {
+      sincronizarProveedoresOdoo();
+      return jsonResponse({ success: true });
     }
 
     if (action === 'cambiarEstado') {
@@ -158,12 +185,12 @@ function guardarSolicitud(data) {
   let linkCarpeta = '';
   const archivos = data.archivos || [];
   if (archivos.length > 0) {
-    const carpetaRaiz = DriveApp.getFolderById(SOLICITUDES_FOLDER_ID);
-    const carpeta     = carpetaRaiz.createFolder(solicitudId);
+    const carpetaRaiz = driveRetry_(() => DriveApp.getFolderById(SOLICITUDES_FOLDER_ID));
+    const carpeta     = driveRetry_(() => carpetaRaiz.createFolder(solicitudId));
     archivos.forEach(function(archivo) {
       const decoded = Utilities.base64Decode(archivo.base64);
       const blob    = Utilities.newBlob(decoded, archivo.tipo || 'application/octet-stream', archivo.nombre);
-      carpeta.createFile(blob);
+      driveRetry_(() => carpeta.createFile(blob));
     });
     linkCarpeta = carpeta.getUrl();
   }
@@ -390,4 +417,22 @@ function crearOCDesdeSheet(data) {
   sheet.getRange(filaIdx + 2, 12).setValue('OC-' + orderId);
 
   return { success: true, orderId, partnerNuevo };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ejecuta una operación de Drive con reintentos automáticos.
+// Necesario porque DriveApp puede lanzar "Service error: Drive" de forma
+// transitoria. Reintenta hasta 3 veces con espera exponencial.
+// ─────────────────────────────────────────────────────────────────────────────
+function driveRetry_(fn, intentos) {
+  intentos = intentos || 3;
+  for (var i = 0; i < intentos; i++) {
+    try {
+      return fn();
+    } catch (e) {
+      var esDriveError = e.message && e.message.indexOf('Service error') !== -1;
+      if (!esDriveError || i === intentos - 1) throw e;
+      Utilities.sleep(Math.pow(2, i) * 1000); // 1s, 2s, 4s
+    }
+  }
 }

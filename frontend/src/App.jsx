@@ -11,6 +11,8 @@ const FORM_INICIAL = {
   archivos: [],
 }
 const MAX_ARCHIVOS = 10
+const MAX_TAMANO_ARCHIVO_MB = 8
+const MAX_TAMANO_ARCHIVO_BYTES = MAX_TAMANO_ARCHIVO_MB * 1024 * 1024
 const CACHE_KEY = 'compras_ncm_solicitantes'
 
 function PantallaExito({ solicitudId, onNueva }) {
@@ -114,6 +116,14 @@ export default function App() {
     const nuevos = Array.from(e.target.files || [])
     const disponibles = MAX_ARCHIVOS - form.archivos.length
     if (disponibles <= 0) return
+
+    const demasiadoGrandes = nuevos.filter(f => f.size > MAX_TAMANO_ARCHIVO_BYTES).map(f => f.name)
+    if (demasiadoGrandes.length > 0) {
+      setEstado(s => ({ ...s, error: `Los siguientes archivos superan el límite de ${MAX_TAMANO_ARCHIVO_MB} MB: ${demasiadoGrandes.join(', ')}` }))
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
     const leidos = await Promise.all(
       nuevos.slice(0, disponibles).map(file => new Promise((resolve, reject) => {
         const reader = new FileReader()
