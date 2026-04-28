@@ -7,7 +7,7 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename="/compras_ncm">
+    <BrowserRouter basename="/ncm-compras">
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/oc" element={<OC />} />
