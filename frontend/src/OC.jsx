@@ -33,8 +33,9 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
   const [provMatch, setProvMatch]   = useState(null)
   const [creando, setCreando]       = useState(false)
   const [resultado, setResultado]   = useState(null)
-  const [rechazando, setRechazando] = useState(false)
-  const [items, setItems]           = useState(parseItems(sol.items))
+  const [rechazando, setRechazando]   = useState(false)
+  const [emitiendo, setEmitiendo]     = useState(false)
+  const [items, setItems]             = useState(parseItems(sol.items))
 
   // Buscar CUIT en sessionStorage cache de proveedores
   const [proveedores, setProveedores] = useState([])
@@ -73,6 +74,23 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
       setResultado({ ok: false, msg: 'Error de red: ' + e.message })
     } finally {
       setCreando(false)
+    }
+  }
+
+  async function handleMarcarEmitida() {
+    setEmitiendo(true)
+    try {
+      const url  = `${GAS_URL}?action=cambiarEstado&solicitudId=${encodeURIComponent(sol.id)}&estado=OC Emitida`
+      const resp = await fetch(url, { redirect: 'follow' })
+      const data = await resp.json()
+      if (data.success) {
+        onEstadoChanged(sol.id, 'OC Emitida')
+        onClose()
+      }
+    } catch (e) {
+      // silencioso
+    } finally {
+      setEmitiendo(false)
     }
   }
 
@@ -277,7 +295,7 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
               <div className="flex gap-2">
                 <button
                   onClick={handleCrearOC}
-                  disabled={cuit.length < 6 || creando || rechazando || !!resultado?.ok}
+                  disabled={cuit.length < 6 || creando || rechazando || emitiendo || !!resultado?.ok}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-xl py-3 text-sm transition-colors flex items-center justify-center gap-2"
                 >
                   {creando && (
@@ -286,8 +304,19 @@ function Modal({ sol, onClose, onOCCreada, onEstadoChanged }) {
                   {creando ? 'Creando OC...' : resultado?.ok ? 'OC Creada ✓' : 'Crear OC en Odoo'}
                 </button>
                 <button
+                  onClick={handleMarcarEmitida}
+                  disabled={creando || rechazando || emitiendo || !!resultado?.ok}
+                  className="bg-green-50 hover:bg-green-100 disabled:opacity-40 text-green-700 font-semibold rounded-xl px-4 text-sm transition-colors flex items-center gap-1.5"
+                >
+                  {emitiendo
+                    ? <span className="inline-block h-4 w-4 border-2 border-green-300 border-t-green-700 rounded-full animate-spin" />
+                    : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                  }
+                  OC Emitida
+                </button>
+                <button
                   onClick={handleRechazar}
-                  disabled={creando || rechazando || !!resultado?.ok}
+                  disabled={creando || rechazando || emitiendo || !!resultado?.ok}
                   className="bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-600 font-semibold rounded-xl px-4 text-sm transition-colors flex items-center gap-1.5"
                 >
                   {rechazando
